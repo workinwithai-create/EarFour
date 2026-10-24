@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EarFour: play your chords on anything, get a real band on them</title>
+  <meta name="description" content="You can play the chords but can't get them into the track. Strum 4 bars into your mic (guitar, piano, anything) or play a MIDI keyboard. EarFour hears one chord per bar, writes them down and seats a real sampled band on exactly those chords. Every loop pass is a new take. Exports WAV, MIDI with chord names and per-take stems." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="tap" id="tap"><button id="tapBtn">Tap to start audio</button><p>Headphones stop the band leaking into your mic. <span class="ios" hidden>iOS: the silent switch mutes Web Audio. Flip it off to hear the band.</span></p></div>
+<main>
+  <p class="eyebrow">WorkinWithAI · live chairs</p>
+  <h1>EarFour</h1>
+  <p class="lead">You can play the chords. You just can't get them into the track without typing chord names or drawing MIDI. <b>Play 4 bars, one chord per bar</b>, on a guitar or piano into your mic, a MIDI keyboard, or the keys below. EarFour <b>hears</b> each bar, writes the chord down, and seats a real sampled band (piano, finger bass, strings, drums) on exactly those chords at your BPM. Every loop pass is a new take. Nothing is uploaded; no AI sounds.</p>
+  <p class="status" id="status">Seating the band…</p>
+  <p class="status ios" hidden>iOS: the silent switch mutes Web Audio.</p>
+
+  <details id="guide" class="guide"><summary>How it works (3 steps)</summary>
+    <ol><li><b>Set your tempo.</b> Pick a groove or type a BPM. Headphones on.</li>
+      <li><b>Press ● Record</b> and, after one count-in bar, play one chord per bar for 4 bars, on anything.</li>
+      <li><b>Press B.</b> The band plays the chords EarFour heard. Fix any chord by typing it, then export.</li></ol>
+    <div class="row inputs"><button id="demoBtn">▶ Hear the demo (the ear listens to a piano)</button><button class="mini" id="guideHide">Got it, hide this</button></div>
+  </details>
+
+  <p class="eyebrow">1 · Your tempo</p>
+  <div class="row" id="grooves"></div>
+  <div class="row inputs">
+    <label>BPM <input id="bpm" type="number" min="60" max="180" step="1" /></label>
+    <label>Key (chord 1 root) <select id="key"></select></label>
+    <label class="grow">4 chords (EarFour fills these in, you can edit) <input id="chords" placeholder="Am F C G" /><small id="chordErr"></small></label>
+  </div>
+
+  <p class="eyebrow">2 · Play your chords</p>
+  <div class="row inputs">
+    <label>Audio input <select id="audioIn"><option value="">System default input</option></select></label>
+    <button class="mini" id="micBtn">Turn mic on</button>
+    <label>Input trim <input id="trim" type="range" min="-24" max="12" step="1" /> <small id="trimLbl"></small></label>
+    <div class="meter" aria-label="Input level"><div id="meterBar"></div><span id="clip" title="Clip light">CLIP</span></div>
+    <label class="chk"><span><input type="checkbox" id="monitor" /> Hear yourself (monitor)</span></label>
+    <label class="chk"><span><input type="checkbox" id="gate" /> Noise gate</span></label>
+    <label>Gate threshold <select id="gateDb"><option value="-60">-60 dB</option><option value="-50">-50 dB</option><option value="-40">-40 dB</option><option value="-30">-30 dB</option></select></label>
+  </div>
+  <small id="micState" class="status">Mic off. EarFour turns it on when you record (echo cancel, noise suppression and auto gain stay OFF).</small>
+  <div class="row inputs">
+    <label>Hear chords from <select id="listen"><option value="auto">Auto (keys/MIDI if played in that bar, else mic)</option><option value="mic">Mic only</option><option value="midi">Keys / MIDI only</option></select></label>
+    <label>Chord types <select id="vocab"><option value="triads">Simple (major, minor)</option><option value="sevenths">With 7ths</option><option value="all">All (adds sus, dim)</option></select></label>
+    <label class="chk"><span><input type="checkbox" id="autoUse" /> Band follows each new take's chords</span></label>
+    <label>Latency fix <input id="latFix" type="range" min="-100" max="100" step="5" /> <small id="latLbl"></small></label>
+  </div>
+  <div class="bars4" id="bars4"></div>
+  <div class="kbrow"><button class="mini" id="liveOctDn" aria-label="Octave down">◀</button><div id="miniKeys" class="minikeys"></div><button class="mini" id="liveOctUp" aria-label="Octave up">▶</button><small id="liveOctLbl"></small></div>
+  <p id="liveHint" class="hint"></p>
+  <div class="row inputs">
+    <button class="mini rec" id="recBtn">● Record</button>
+    <label class="chk"><span><input type="checkbox" id="recClick" /> Hi-hat click while recording</span></label>
+    <label class="chk"><span><input type="checkbox" id="layer" /> Layer: keep earlier takes looping</span></label>
+  </div>
+
+  <p class="eyebrow">Takes</p>
+  <small id="takeInfo" class="status"></small>
+  <div id="takes" class="takes"></div>
+  <div class="row inputs"><button class="mini" id="exportStems">Export takes (WAV stems .zip)</button><button class="mini" id="clearTakes">Clear takes</button></div>
+
+  <p class="eyebrow">3 · The band</p>
+  <div class="row" id="recipes"></div>
+  <div class="row" id="chairs"></div>
+  <div class="row inputs">
+    <label>Your playing <input id="youGain" type="range" min="0" max="1.5" step="0.01" /></label>
+    <label>Band <input id="bandGain" type="range" min="0" max="1.5" step="0.01" /></label>
+    <label>Master (into limiter) <input id="master" type="range" min="0" max="1.5" step="0.01" /></label>
+    <label>Export length <select id="bars"><option>4</option><option selected>8</option><option>16</option></select></label>
+    <label class="chk"><span><input type="checkbox" id="wavTakes" /> Include looping takes in the band WAV</span></label>
+  </div>
+
+  <p class="eyebrow">Devices</p>
+  <div class="row inputs">
+    <label>Audio output <select id="audioOut"><option value="">System default</option></select></label><small id="audioOutNote" class="status"></small>
+  </div>
+  <div class="row inputs">
+    <label>MIDI controller <select id="midiIn"><option value="">(none)</option></select></label>
+    <label>Keys sound <select id="liveInst"><option value="piano">Piano</option><option value="bass">Finger bass</option><option value="pad">String pad (hold)</option></select></label>
+    <label class="chk"><span><input type="checkbox" id="midiTransport" /> MIDI Start/Stop messages run the band</span></label>
+    <label>MIDI out <select id="midiOut"><option value="">(none)</option></select></label>
+  </div>
+  <small id="midiNote" class="status">Out while playing: bass ch1, piano ch2, pad ch3, kit ch10.</small>
+
+  <p class="eyebrow">License</p>
+  <div class="row inputs"><span id="licState" class="status"></span><input id="licKey" placeholder="Lemon Squeezy license key" aria-label="License key" /><button class="mini" id="licBtn">Unlock</button><button class="mini" id="licOff" hidden>Remove key</button><a class="mini" id="buy" target="_blank" rel="noopener">Buy</a></div>
+  <p class="hint">Samples: FluidR3_GM (gleitz/midi-js-soundfonts @044fab8) and Virtuosity Drums (CC0, @9f04cf9), loaded live from jsDelivr. Exports: 48 kHz 24-bit stereo, downbeat at sample 0, exact bar length.</p>
+</main>
+<div class="dock">
+  <button id="playA">A · Thin: piano + your take</button>
+  <button id="playB">B · Full band on your chords</button>
+  <button class="ghost" id="stop">Stop</button>
+  <button class="ghost rec" id="recBtn2">● Record</button>
+  <button class="ghost" id="exportWav">Export WAV</button>
+  <button class="ghost" id="exportMid">Export MIDI</button>
+</div>
+<script src="./app.js" defer></script>
+</body>
+</html>

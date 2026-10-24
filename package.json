@@ -1,0 +1,8 @@
+{
+  "name": "earfour",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EarFour: play your chords on anything, get a real band on them. Static browser desk.",
+  "license": "MIT",
+  "scripts": { "build": "mkdir -p dist && cp index.html app.js styles.css dist/" }
+}
